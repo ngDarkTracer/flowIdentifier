@@ -9,18 +9,21 @@ const app = express()
 
 app.get('/', (request, response) => {
     response.writeHead(200, { "Content-Type": "text/html" });
-    response.end('<form action="upload" method="post" enctype="multipart/form-data">' +
-        '<input type="file" name="uploadedFile"><br>' +
-        '<input type="submit"></form>');
+    response.end('<html><head><title>Flow identifier</title>' +
+        '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous"></head>' +
+        '<body>' +
+        '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%)"><form action="upload" method="post" enctype="multipart/form-data">' +
+        '<div class="mb-3">' +
+        '  <input class="form-control" type="file" name="uploadedFile">' +
+        '</div>' +
+        '<input class="btn btn-success" type="submit"></form></div></body></html>');
 })
 
 app.post('/upload', (request, response) => {
 
-    const form = new formidable.IncomingForm();
+    response.writeHead(200, { "content-type": "text/html" })
 
-    let resultString = ''
-
-    let renderedTab = `<table><thead><tr><td>Objet declancheur</td><td>Type de flow</td></tr></thead><tbody>`
+    const form = new formidable.IncomingForm()
 
     form.parse(request, (err, fields, files) => {
 
@@ -30,41 +33,39 @@ app.post('/upload', (request, response) => {
         });
 
         zip.on('ready', () => {
+
+            let resultString = ''
+            let renderedTab = `<html><head><title>Flow identifier</title>
+                        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+                        </head>
+                        <body>
+                        <div>
+                        <table class="table table-striped"><thead>
+                        <tr><th scope="col">Nom du flow</th><th scope="col">Objet declancheur</th><th scope="col">Type de flow</th></tr></thead><tbody>`
+
             for (const entry of Object.values(zip.entries())) {
                 if (!entry.isDirectory) {
                     const data = zip.entryDataSync(entry.name);
-                    fs.readFile(data, 'utf8' , (err, data) => {
-                        if (err) {
-                            const jsonFile = xml2Json.xml2json(err.path + '', {compact: true, spaces: 4});
-                            const obj = JSON.parse(jsonFile)
-
+                    try {
+                        const xmlData = fs.readFileSync(data, 'utf8')
+                        console.log(xmlData)
+                    } catch (err) {
+                        const jsonFile = xml2Json.xml2json(err.path + '', {compact: true, spaces: 4});
+                        const obj = JSON.parse(jsonFile)
+                        if (obj.Flow?.processType._text) {
                             if (obj.Flow?.start?.object?._text)
-                                console.log('isObject')
-                                //renderedTab += '<tr><td>'+obj.Flow?.start?.object?._text+'</td>'
+                                renderedTab += `<tr><td>${obj.Flow?.label._text}</td><td>${obj.Flow?.start?.object?._text}</td><td>${obj.Flow?.processType._text}</td></tr>`
                             else
-                                console.log('notObject')
-                                //renderedTab += '<tr><td>'+null+'</td>'
-
-                            if (obj.Flow?.processType._text)
-                                console.log('isType')
-                                // += '<td>'+obj.Flow?.processType._text+'</td></tr>'
-                            else
-                                console.log('notType')
-                                //renderedTab += '<td>'+null+'</td></tr></tbody></table>'
-
-                            resultString += `Objet declancheur: ${obj.Flow?.start?.object?._text} | Type de flow: ${obj.Flow?.processType._text}\n`
-                            return
+                                renderedTab += `<tr><td>${obj.Flow?.label._text}</td><td>no sObject found</td><td>${obj.Flow?.processType._text}</td></tr>`
                         }
-                        console.log(data)
-                    })
+                    }
                 }
             }
+            renderedTab += `</tbody></table></div></body></html>`
+            response.end(renderedTab)
             zip.close();
         });
     });
-
-    response.writeHead(200, { "content-type": "text/html" })
-    response.end('Processed')
 })
 
 http.createServer(app).listen(process.env.PORT || 3000);
