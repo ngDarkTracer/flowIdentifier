@@ -48,15 +48,18 @@ app.post('/upload', (request, response) => {
                     const data = zip.entryDataSync(entry.name);
                     try {
                         const xmlData = fs.readFileSync(data, 'utf8')
-                        console.log(xmlData)
+                        //console.log(xmlData)
                     } catch (err) {
                         const jsonFile = xml2Json.xml2json(err.path + '', {compact: true, spaces: 4});
+                        //console.log(jsonFile)
                         const obj = JSON.parse(jsonFile)
-                        if (obj.Flow?.processType._text) {
-                            if (obj.Flow?.start?.object?._text)
-                                renderedTab += `<tr><td>${obj.Flow?.label._text}</td><td>${obj.Flow?.start?.object?._text}</td><td>${obj.Flow?.processType._text}</td></tr>`
-                            else
-                                renderedTab += `<tr><td>${obj.Flow?.label._text}</td><td>no sObject found</td><td>${obj.Flow?.processType._text}</td></tr>`
+                        if (obj.Flow?.processType._text.match(/flow/i) && obj.Flow?.processType._text !== 'WorkFlow') {
+                            if (obj.Flow?.processType._text) {
+                                if (obj.Flow?.start?.object?._text)
+                                    renderedTab += `<tr><td>${obj.Flow?.label._text}</td><td>${obj.Flow?.start?.object?._text}</td><td>${obj.Flow?.processType._text}</td></tr>`
+                                else
+                                    renderedTab += `<tr><td>${obj.Flow?.label._text}</td><td>${obj.Flow?.recordLookups?.object?._text}</td><td>${obj.Flow?.processType._text}</td></tr>`
+                            }
                         }
                     }
                 }
